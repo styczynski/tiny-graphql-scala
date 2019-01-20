@@ -1,5 +1,7 @@
 package parser.schema.types
 
+import parser.exceptions.NotCompatibleTypesError
+
 abstract class GraphQLComposableType[T] extends GraphQLType[T] {
   def getFields: Map[String, GraphQLType[_]]
   def hasField(name: String): Boolean = getField(name).isDefined
@@ -20,10 +22,10 @@ abstract class GraphQLComposableType[T] extends GraphQLType[T] {
   override def satisfiesType(graphQLType: GraphQLType[_]): Boolean = satisfiesTypeModifiers(graphQLType) && (graphQLType match {
     case composable: GraphQLComposableType[_] => composable.getFields.forall((keyValue: (String, GraphQLType[_])) => {
       getField(keyValue._1) match {
-        case Some(fieldType) => if (fieldType.satisfiesType(keyValue._2)) true else throw new Exception(s"$getTypeKeyword $getStringName does not satisfy ${graphQLType.getTypeKeyword} ${graphQLType.getStringName}: Field ${keyValue._1} has type ${keyValue._2.getStringName} which is incompatible with ${fieldType.getTypeKeyword} ${fieldType.getStringName}")
-        case None => throw new Exception(s"$getTypeKeyword $getStringName does not satisfy ${graphQLType.getTypeKeyword} ${graphQLType.getStringName}: Missing ${keyValue._1} field")
+        case Some(fieldType) => if (fieldType.satisfiesType(keyValue._2)) true else throw NotCompatibleTypesError(this, graphQLType, s"Field ${keyValue._1} has type ${keyValue._2.getStringName} which is incompatible with ${fieldType.getTypeKeyword} ${fieldType.getStringName}")
+        case None => throw NotCompatibleTypesError(this, graphQLType, s"Missing field ${keyValue._1}")
       }
     })
-    case _ => throw new Exception(s"$getTypeKeyword $getStringName does not satisfy ${graphQLType.getTypeKeyword} ${graphQLType.getStringName}: Type mismatch")
+    case _ => throw NotCompatibleTypesError(this, graphQLType, "Type mismatch")
   })
 }

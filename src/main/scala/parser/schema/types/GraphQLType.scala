@@ -1,5 +1,7 @@
 package parser.schema.types
 
+import parser.exceptions.{ImplementsNonAbstractTypeError, NotCompatibleTypesError}
+
 abstract class GraphQLType[T](val name: Option[String] = None, val isNullableValue: Boolean = true) {
   def withName(newName: String): GraphQLType[T]
   def isNullable: Boolean = isNullableValue
@@ -8,7 +10,7 @@ abstract class GraphQLType[T](val name: Option[String] = None, val isNullableVal
   def getInterface: Option[GraphQLComposableType[_]] = None
   def withInterface(typeInterface: Option[GraphQLComposableType[_]]): GraphQLType[T] = typeInterface match {
     case Some(typeInterfaceValue) => if (typeInterfaceValue.isAbstract) makeCopy else
-      throw new Exception(s"Type $getName cannot implement non abstract type ${typeInterfaceValue.getName}")
+      throw ImplementsNonAbstractTypeError(getStringName, typeInterfaceValue.getStringName)
     case None => makeCopy
   }
   def getName: Option[String] = name
@@ -29,6 +31,6 @@ abstract class GraphQLType[T](val name: Option[String] = None, val isNullableVal
   def validateType: Boolean = true
   def satisfiesType(graphQLType: GraphQLType[_]): Boolean
   def satisfiesTypeModifiers(graphQLType: GraphQLType[_]): Boolean = if(isNullable == graphQLType.isNullable) true
-    else throw new Exception(s"$getTypeKeyword $getStringName does not satisfy ${graphQLType.getTypeKeyword} ${graphQLType.getStringName}: Nullability does not match")
+    else throw NotCompatibleTypesError(this, graphQLType, "Nullability does not match")
   override def toString: String = s"$getTypeKeyword ${toString(nestedMode = false)}"
 }

@@ -1,5 +1,6 @@
 package parser.schema
 
+import parser.exceptions.{AnonymousTypeForbiddenError, InvalidTypeSpecificationError, TypeMissingError}
 import parser.schema.types.{GraphQLInterfaceType, GraphQLType}
 
 final case class GraphQLSchema(types: Map[String, GraphQLType[_]] = Map(), interfaces: Map[String, GraphQLInterfaceType] = Map()) {
@@ -8,7 +9,7 @@ final case class GraphQLSchema(types: Map[String, GraphQLType[_]] = Map(), inter
       case Some(typeObj) => typeObj
       case None => interfaces.get(name) match {
         case Some(typeObj) => typeObj
-        case None => throw new Exception(s"The type $name was not declared.")
+        case None => throw TypeMissingError(name)
       }
     }
   }
@@ -16,7 +17,7 @@ final case class GraphQLSchema(types: Map[String, GraphQLType[_]] = Map(), inter
   def findInterface(name: String): GraphQLInterfaceType = {
     interfaces.get(name) match {
       case Some(typeObj) => typeObj
-      case None => throw new Exception(s"The interface $name was not declared.")
+      case None => throw TypeMissingError(name)
     }
   }
 
@@ -27,9 +28,9 @@ final case class GraphQLSchema(types: Map[String, GraphQLType[_]] = Map(), inter
         case interfaceType: GraphQLInterfaceType => copy(interfaces = interfaces + (name -> interfaceType))
         case _ => copy(types = types + (name -> graphQLType))
       }
-      case None => throw new Exception("Could not declare anonymous type in global scope")
+      case None => throw AnonymousTypeForbiddenError("Could not declare anonymous type in global scope")
     }
-    else throw new Exception(s"Type specification for ${graphQLType.getStringName} is not valid")
+    else throw InvalidTypeSpecificationError(graphQLType, "Validation method returns false")
   }
 
   override def toString: String = {

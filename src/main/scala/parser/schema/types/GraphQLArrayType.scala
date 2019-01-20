@@ -1,5 +1,7 @@
 package parser.schema.types
 
+import parser.exceptions.NotCompatibleTypesError
+
 final case class GraphQLArrayType(subtype: GraphQLType[_], override val isNullableValue: Boolean = true) extends GraphQLType[GraphQLArrayType](name = None) {
   override def makeCopy: GraphQLArrayType = copy()
   override def withNullability(shouldBeNullable: Boolean): GraphQLArrayType = copy(isNullableValue = shouldBeNullable)
@@ -12,7 +14,7 @@ final case class GraphQLArrayType(subtype: GraphQLType[_], override val isNullab
   }
   override def satisfiesType(graphQLType: GraphQLType[_]): Boolean = satisfiesTypeModifiers(graphQLType) && (graphQLType match {
     case array: GraphQLArrayType => array.getSubtype.satisfiesType(subtype)
-    case _ => throw new Exception(s"${getTypeKeyword} $getStringName does not satisfy ${graphQLType.getTypeKeyword} ${graphQLType.getStringName}: Type mismatch")
+    case _ => throw NotCompatibleTypesError(this, graphQLType, "Type mismatch")
   })
 }
 

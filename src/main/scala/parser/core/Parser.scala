@@ -1,8 +1,10 @@
 package parser.core
 
-import parser.exceptions.ParseError
-import parser.exceptions.RuntimeError
 import scala.io.Source
+import scala.collection.immutable.Seq
+import parser.exceptions.ParserError
+import org.parboiled2.{ParseError, RuleTrace, Position}
+import org.parboiled2.ParseError
 
 abstract class Parser[ParserCoreT <: org.parboiled2.Parser, ResultT] {
   var core: Option[ParserCoreT] = None
@@ -16,22 +18,13 @@ abstract class Parser[ParserCoreT <: org.parboiled2.Parser, ResultT] {
   }
 
   def parse(code: String): ResultT = {
-    core = Some(createCore(code))
     try {
-      core match {
-        case Some(parser) => run(parser)
-        case None => throw RuntimeError[this.type](new Exception("Core parser is not available"), this)
-      }
+      core = Some(createCore(code))
+      run(core.get)
     } catch {
-      case error: org.parboiled2.ParseError => throw ParseError[this.type](error, this)
-      case error: Throwable => throw RuntimeError[this.type](error, this)
-    }
-  }
-
-  def formatParseError(schemaParseError: ParseError[_]): String = {
-    core match {
-      case Some(parser) => parser.formatError(schemaParseError.error)
-      case None => throw RuntimeError[this.type](new Exception("Core parser is not available"), this)
+      case error: ParserError[_] => throw error.withParser(core)
+      case error: ParseError => throw ParserError(error, error.position, Some(error.traces)).withParser(core)
+      case error: Throwable => throw ParserError(error).withParser(core)
     }
   }
 }

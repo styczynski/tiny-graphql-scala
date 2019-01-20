@@ -4,6 +4,7 @@ import scala.language.implicitConversions
 import shapeless.{::, HNil}
 import org.parboiled2._
 
+import parser.exceptions._
 import parser.core.macros.ParserMacros.parserErr
 import parser.schema.types._
 
@@ -181,7 +182,7 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
       ']' ~
       EmptyIdentifier ~
       optional(Nullability) ~>
-      ((env: GraphQLSchema, typeName: AnyIdentifier, selfName: AnyIdentifier) => env :: GraphQLArrayType(env.findType(typeName.getName).withNullability(typeName.isNullable)).withNullability(selfName.isNullable) :: HNil)
+      ((env: GraphQLSchema, typeName: AnyIdentifier, selfName: AnyIdentifier) => env :: parserErr(GraphQLArrayType(env.findType(typeName.getName).withNullability(typeName.isNullable)).withNullability(selfName.isNullable)) :: HNil)
   }
 
   def TypeArray: RuleEnvP[GraphQLType[_]] = rule {
@@ -193,7 +194,7 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
         ']' ~
         EmptyIdentifier ~
         optional(Nullability) ~>
-        ((subType: GraphQLType[_], selfName: AnyIdentifier) => GraphQLArrayType(subType).withNullability(selfName.isNullable))
+        ((subType: GraphQLType[_], selfName: AnyIdentifier) => parserErr(GraphQLArrayType(subType).withNullability(selfName.isNullable)))
       )
   }
 

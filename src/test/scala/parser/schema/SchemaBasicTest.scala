@@ -107,5 +107,106 @@ class SchemaBasicTest extends FunSpec {
       )
     }
 
+    it("should handle nested anonymous composite types") {
+      val code = """|type CustomNested {
+                    |    x: ID
+                    |    y: {
+                    |        y: {
+                    |            y: {
+                    |                z: Int!
+                    |            }
+                    |        }
+                    |    }
+                    |}
+                    |""".stripMargin
+      val schema = SchemaParser().parse(code)
+      assert(schema.findType("CustomNested") ==
+        GraphQLCompositeType(Some("CustomNested"))
+          .withField("x", DefaultGraphQLSchema.ID)
+          .withField("y", GraphQLCompositeType()
+              .withField("y", GraphQLCompositeType()
+                .withField("y", GraphQLCompositeType().withField("z", DefaultGraphQLSchema.INT.withNullability(false)))
+              )
+          )
+      )
+    }
+
+    it("should handle nested composite types") {
+      val code = """|type TypeY { z: Int! }
+                    |
+                    |type Custom {
+                    |    x: ID
+                    |    y: {
+                    |        y: {
+                    |            y: TypeY
+                    |        }
+                    |    }
+                    |}
+                    |""".stripMargin
+      val schema = SchemaParser().parse(code)
+
+      assert(schema.findType("TypeY") == GraphQLCompositeType(Some("TypeY")).withField("z", DefaultGraphQLSchema.INT.withNullability(false)))
+
+      assert(schema.findType("Custom") ==
+        GraphQLCompositeType(Some("Custom"))
+          .withField("x", DefaultGraphQLSchema.ID)
+          .withField("y", GraphQLCompositeType()
+            .withField("y", GraphQLCompositeType()
+              .withField("y", GraphQLCompositeType(Some("TypeY")).withField("z", DefaultGraphQLSchema.INT.withNullability(false)))
+            )
+          )
+      )
+    }
+
+    it("should handle array-nested composite types") {
+      val code = """|type TypeX {
+                    |    x: Float
+                    |}
+                    |
+                    |type TypeY {
+                    |    z: Int!
+                    |    tt: [Boolean]
+                    |    x: TypeX!
+                    |}
+                    |
+                    |type Custom {
+                    |    x: ID
+                    |    y: {
+                    |        y: {
+                    |            y: [[TypeY!]!]
+                    |        }
+                    |    }
+                    |}
+                    |""".stripMargin
+      val schema = SchemaParser().parse(code)
+
+      val TypeX = GraphQLCompositeType(Some("TypeX"))
+        .withField("x", DefaultGraphQLSchema.FLOAT)
+
+      val TypeY = GraphQLCompositeType(Some("TypeY"))
+        .withField("z", DefaultGraphQLSchema.INT.withNullability(false))
+          .withField("tt", GraphQLArrayType(DefaultGraphQLSchema.BOOLEAN))
+          .withField("x", TypeX.withNullability(false))
+
+      assert(schema.findType("TypeX") == TypeX)
+
+      assert(schema.findType("TypeY") == TypeY)
+
+      assert(schema.findType("Custom") ==
+        GraphQLCompositeType(Some("Custom"))
+          .withField("x", DefaultGraphQLSchema.ID)
+          .withField("y", GraphQLCompositeType()
+            .withField("y", GraphQLCompositeType()
+              .withField("y",
+                GraphQLArrayType(
+                  GraphQLArrayType(
+                    TypeY.withNullability(false)
+                  ).withNullability(false)
+                )
+              )
+            )
+          )
+      )
+    }
   }
 }
