@@ -1,5 +1,4 @@
 package parser.schema.types
 
-class GraphQLInterface {
-
+abstract class GraphQLInterface extends GraphQLComposableType[GraphQLInterface] {
 }

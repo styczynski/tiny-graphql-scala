@@ -16,7 +16,7 @@ class SchemaEnumTest extends FunSpec {
                     |}
                     |""".stripMargin
       val schema = SchemaParser().parse(code)
-      assert(schema.findType("ENUM0") ==
+      assert(schema.findType("ENUM0") ~=
         GraphQLEnumType(Some("ENUM0"))
           .withValue("value1")
           .withValue("value2")
@@ -41,9 +41,9 @@ class SchemaEnumTest extends FunSpec {
       val enumType = GraphQLEnumType(Some("EnumType"))
         .withValue("value1")
 
-      assert(schema.findType("EnumType") == enumType)
+      assert(schema.findType("EnumType") ~= enumType)
 
-      assert(schema.findType("Nested") ==
+      assert(schema.findType("Nested") ~=
         GraphQLCompositeType(Some("Nested"))
           .withField("x", GraphQLArrayType(enumType))
           .withField("y", enumType)

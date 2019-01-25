@@ -19,13 +19,16 @@ abstract class GraphQLComposableType[T] extends GraphQLType[T] {
                         |    $typesString}""".stripMargin
     }
   }
-  override def satisfiesType(graphQLType: GraphQLType[_]): Boolean = satisfiesTypeModifiers(graphQLType) && (graphQLType match {
-    case composable: GraphQLComposableType[_] => composable.getFields.forall((keyValue: (String, GraphQLType[_])) => {
-      getField(keyValue._1) match {
-        case Some(fieldType) => if (fieldType.satisfiesType(keyValue._2)) true else throw NotCompatibleTypesError(this, graphQLType, s"Field ${keyValue._1} has type ${keyValue._2.getStringName} which is incompatible with ${fieldType.getTypeKeyword} ${fieldType.getStringName}")
-        case None => throw NotCompatibleTypesError(this, graphQLType, s"Missing field ${keyValue._1}")
-      }
-    })
-    case _ => throw NotCompatibleTypesError(this, graphQLType, "Type mismatch")
-  })
+  override def satisfiesType(graphQLType: GraphQLType[_], resolveTrace: Set[(Option[String], Option[String])]): Boolean =
+      satisfiesTypeModifiers(graphQLType) && (resolveTrace((getName, graphQLType.getName)) || (graphQLType match {
+      case composable: GraphQLComposableType[_] => composable.getFields.forall((keyValue: (String, GraphQLType[_])) => {
+        getField(keyValue._1) match {
+          case Some(fieldType) => if (fieldType.satisfiesType(keyValue._2, resolveTrace + ((getName, graphQLType.getName)))) true else throw NotCompatibleTypesError(this, graphQLType, s"Field ${keyValue._1} has type ${keyValue._2.getStringName} which is incompatible with ${fieldType.getTypeKeyword} ${fieldType.getStringName}")
+          case None => throw NotCompatibleTypesError(this, graphQLType, s"Missing field ${keyValue._1}")
+        }
+      })
+      case refType: GraphQLRefType => satisfiesType(refType.resolve, resolveTrace)
+      case _ => throw NotCompatibleTypesError(this, graphQLType, "Type mismatch")
+    }))
+
 }

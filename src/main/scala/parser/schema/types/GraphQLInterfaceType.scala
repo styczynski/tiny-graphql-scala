@@ -1,6 +1,6 @@
 package parser.schema.types
 
-final case class GraphQLInterfaceType(override val name: Option[String] = None, override val isNullableValue: Boolean = true, fields: Map[String,  GraphQLType[_]] = Map()) extends GraphQLComposableType[GraphQLInterfaceType] {
+final case class GraphQLInterfaceType(override val name: Option[String] = None, override val isNullableValue: Boolean = true, fields: Map[String,  GraphQLType[_]] = Map()) extends GraphQLInterface {
   override def makeCopy: GraphQLInterfaceType = copy()
   override def withNullability(shouldBeNullable: Boolean): GraphQLInterfaceType = copy(isNullableValue = shouldBeNullable)
   override def withField(fieldName: String, graphQLType: GraphQLType[_]): GraphQLInterfaceType = copy(fields = fields + (fieldName -> graphQLType))

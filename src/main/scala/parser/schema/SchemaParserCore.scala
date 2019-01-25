@@ -31,7 +31,7 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
 
   def Input: Rule1[GraphQLSchema] = rule { push(env match {
     case Some(envValue) => envValue
-    case None => DefaultGraphQLSchema.implement(GraphQLSchema())
+    case None => DefaultGraphQLSchema.implement(new GraphQLSchema())
   }) ~ Whitespaces ~ zeroOrMore(Expression) ~ Whitespaces ~ EOI }
 
   implicit def wspStr(s: String): Rule0 = rule {
@@ -78,7 +78,7 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
       ((env: GraphQLSchema, ident: AnyIdentifier) => ident :: env :: HNil) ~
       Whitespaces ~
       InterfaceDefinition ~>
-      ((typeName: AnyIdentifier, env: EnvE[GraphQLComposableType[GraphQLInterfaceType]]) => parserErr(env._1.registerType(env._2.withName(typeName.getName))))
+      ((typeName: AnyIdentifier, env: EnvE[GraphQLComposableType[GraphQLInterface]]) => parserErr(env._1.registerType(env._2.withName(typeName.getName))))
   }
 
   def ScalarDeclaration: RuleEnvT = rule {
@@ -120,18 +120,18 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
       ((typeName: AnyIdentifier, env: EnvE[GraphQLType[_]]) => {
         val typeWithName = env._2.withName(typeName.getName)
         val typeWithInterface = typeName.typeInterface match {
-          case Some(interfaceName) => typeWithName.withInterface(Some(env._1.findInterface(interfaceName.getName)))
+          case Some(interfaceName) => typeWithName.withInterface(Some(GraphQLRefInterface(env._1, Some(interfaceName.getName))/*env._1.findInterface(interfaceName.getName)*/))
           case None => typeWithName
         }
         parserErr(env._1.registerType(typeWithInterface))
       })
   }
 
-  def InterfaceDefinition: RuleEnvE[GraphQLComposableType[GraphQLInterfaceType]] = rule {
+  def InterfaceDefinition: RuleEnvE[GraphQLComposableType[GraphQLInterface]] = rule {
     '{' ~
       Whitespaces ~>
       ((env: GraphQLSchema) => (env, GraphQLInterfaceType())) ~
-      zeroOrMore(TypeAssignment[GraphQLInterfaceType]) ~
+      zeroOrMore(TypeAssignment[GraphQLInterface]) ~
       Whitespaces ~
       '}'
   }
@@ -170,7 +170,7 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
   def TypeAssignmentIdentifier[T]: RuleTypeAssignment[T] = rule {
     Identifier ~
       optional(Nullability) ~>
-      ((fieldName: AnyIdentifier, topType: GraphQLComposableType[T], env: GraphQLSchema, typeName: AnyIdentifier) => (env, topType.withField(fieldName.getName, env.findType(typeName.getName).withNullability(typeName.isNullable))))
+      ((fieldName: AnyIdentifier, topType: GraphQLComposableType[T], env: GraphQLSchema, typeName: AnyIdentifier) => (env, topType.withField(fieldName.getName, GraphQLRefType(env, Some(typeName.getName)).withNullability(typeName.isNullable))))
   }
 
   def IdentifierArray: RuleEnvP[GraphQLType[_]] = rule {
@@ -182,7 +182,7 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
       ']' ~
       EmptyIdentifier ~
       optional(Nullability) ~>
-      ((env: GraphQLSchema, typeName: AnyIdentifier, selfName: AnyIdentifier) => env :: parserErr(GraphQLArrayType(env.findType(typeName.getName).withNullability(typeName.isNullable)).withNullability(selfName.isNullable)) :: HNil)
+      ((env: GraphQLSchema, typeName: AnyIdentifier, selfName: AnyIdentifier) => env :: parserErr(GraphQLArrayType(GraphQLRefType(env, Some(typeName.getName)).withNullability(typeName.isNullable)).withNullability(selfName.isNullable)) :: HNil)
   }
 
   def TypeArray: RuleEnvP[GraphQLType[_]] = rule {

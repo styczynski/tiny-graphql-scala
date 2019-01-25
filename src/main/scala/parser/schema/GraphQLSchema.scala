@@ -1,9 +1,9 @@
 package parser.schema
 
 import parser.exceptions.{AnonymousTypeForbiddenError, InvalidTypeSpecificationError, TypeMissingError}
-import parser.schema.types.{GraphQLInterfaceType, GraphQLType}
+import parser.schema.types.{GraphQLInterface, GraphQLInterfaceType, GraphQLType}
 
-final case class GraphQLSchema(types: Map[String, GraphQLType[_]] = Map(), interfaces: Map[String, GraphQLInterfaceType] = Map()) {
+final class GraphQLSchema(var types: Map[String, GraphQLType[_]] = Map(), var interfaces: Map[String, GraphQLInterfaceType] = Map()) {
   def findType(name: String): GraphQLType[_] = {
     types.get(name) match {
       case Some(typeObj) => typeObj
@@ -14,23 +14,23 @@ final case class GraphQLSchema(types: Map[String, GraphQLType[_]] = Map(), inter
     }
   }
 
-  def findInterface(name: String): GraphQLInterfaceType = {
+  def findInterface(name: String): GraphQLInterface = {
     interfaces.get(name) match {
       case Some(typeObj) => typeObj
       case None => throw TypeMissingError(name)
     }
   }
 
+  def validate: Boolean = types.forall(_._2.validateType) && interfaces.forall(_._2.validateType)
+
   def registerType(graphQLType: GraphQLType[_]): GraphQLSchema = {
-    if (graphQLType.validateType)
     graphQLType.getName match {
       case Some(name) => graphQLType match {
-        case interfaceType: GraphQLInterfaceType => copy(interfaces = interfaces + (name -> interfaceType))
-        case _ => copy(types = types + (name -> graphQLType))
+        case interfaceType: GraphQLInterfaceType => interfaces = interfaces + (name -> interfaceType); this
+        case _ => types = types + (name -> graphQLType); this
       }
       case None => throw AnonymousTypeForbiddenError("Could not declare anonymous type in global scope")
     }
-    else throw InvalidTypeSpecificationError(graphQLType, "Validation method returns false")
   }
 
   override def toString: String = {
@@ -38,7 +38,7 @@ final case class GraphQLSchema(types: Map[String, GraphQLType[_]] = Map(), inter
       val typeText = keyValue._2.toString(nestedMode = false).split("\\r?\\n").foldLeft("")((acc, line) => acc + (if (acc.isEmpty) "" else "    ") + line + "\n")
       s"$acc    ${keyValue._2.getTypeKeyword} $typeText"
     })
-    val interfacesString = interfaces.foldLeft("")((acc: String, keyValue: (String, GraphQLType[GraphQLInterfaceType])) => {
+    val interfacesString = interfaces.foldLeft("")((acc: String, keyValue: (String, GraphQLInterfaceType)) => {
       val typeText = keyValue._2.toString(nestedMode = false).split("\\r?\\n").foldLeft("")((acc, line) => acc + (if (acc.isEmpty) "" else "    ") + line + "\n")
       s"$acc    ${keyValue._2.getTypeKeyword} $typeText"
     })

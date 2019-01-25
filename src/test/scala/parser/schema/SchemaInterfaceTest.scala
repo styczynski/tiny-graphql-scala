@@ -18,7 +18,7 @@ class SchemaInterfaceTest extends FunSpec {
                     |""".stripMargin
       val schema = SchemaParser().parse(code)
 
-      assert(schema.findType("Custom") ==
+      assert(schema.findType("Custom") ~=
         GraphQLInterfaceType(Some("Custom"))
           .withField("x", DefaultGraphQLSchema.ID)
           .withField("t", DefaultGraphQLSchema.BOOLEAN)
@@ -34,7 +34,7 @@ class SchemaInterfaceTest extends FunSpec {
                     |}
                     |""".stripMargin
       val schema = SchemaParser().parse(code)
-      assert(schema.findType("CustomNestedArrays") ==
+      assert(schema.findType("CustomNestedArrays") ~=
         GraphQLInterfaceType(Some("CustomNestedArrays"))
           .withField("x", DefaultGraphQLSchema.STRING)
           .withField("y", GraphQLArrayType(
@@ -67,8 +67,8 @@ class SchemaInterfaceTest extends FunSpec {
         .withField("x", GraphQLArrayType(DefaultGraphQLSchema.INT))
         .withField("field", GraphQLArrayType(nestedInterfaceType.withNullability(false)))
 
-      assert(schema.findType("NestedInterface") == nestedInterfaceType)
-      assert(schema.findType("MyInterface") == myInterfaceType)
+      assert(schema.findType("NestedInterface") ~= nestedInterfaceType)
+      assert(schema.findType("MyInterface") ~= myInterfaceType)
     }
 
     it("should handle interface type implementations") {
@@ -97,8 +97,8 @@ class SchemaInterfaceTest extends FunSpec {
           .withField("z", DefaultGraphQLSchema.STRING)
           .withField("p", DefaultGraphQLSchema.INT.withNullability(false))
 
-      assert(schema.findType("MyInterface") == myInterfaceType)
-      assert(schema.findType("TypeImpls") == typeImplsType)
+      assert(schema.findType("MyInterface") ~= myInterfaceType)
+      assert(schema.findType("TypeImpls") ~= typeImplsType)
     }
 
     it("should handle nested interface type implementations") {
@@ -135,10 +135,10 @@ class SchemaInterfaceTest extends FunSpec {
         .withInterface(Some(myInterface2Type))
         .withField("fields", GraphQLArrayType(myInterface2ImplType))
 
-      assert(schema.findType("MyInterface") == myInterfaceType)
-      assert(schema.findType("MyInterface2") == myInterface2Type)
-      assert(schema.findType("MyInterface2Impl") == myInterface2ImplType)
-      assert(schema.findType("TypeImpls") == typeImplsType)
+      assert(schema.findType("MyInterface") ~= myInterfaceType)
+      assert(schema.findType("MyInterface2") ~= myInterface2Type)
+      assert(schema.findType("MyInterface2Impl") ~= myInterface2ImplType)
+      assert(schema.findType("TypeImpls") ~= typeImplsType)
     }
 
     it("should throw on interface type missing field") {
@@ -188,5 +188,6 @@ class SchemaInterfaceTest extends FunSpec {
         SchemaParser().parse(code)
       }
     }
+
   }
 }

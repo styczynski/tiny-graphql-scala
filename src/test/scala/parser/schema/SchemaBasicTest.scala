@@ -32,7 +32,7 @@ class SchemaBasicTest extends FunSpec {
                     |}
                     |""".stripMargin
       val schema = SchemaParser().parse(code)
-      assert(schema.findType("Custom") ==
+      assert(schema.findType("Custom") ~=
         GraphQLCompositeType(Some("Custom"))
           .withField("x", DefaultGraphQLSchema.ID)
           .withField("t", DefaultGraphQLSchema.BOOLEAN)
@@ -49,7 +49,7 @@ class SchemaBasicTest extends FunSpec {
                     |}
                     |""".stripMargin
       val schema = SchemaParser().parse(code)
-      assert(schema.findType("CustomNullability") ==
+      assert(schema.findType("CustomNullability") ~=
         GraphQLCompositeType(Some("CustomNullability"))
           .withField("x", DefaultGraphQLSchema.STRING.withNullability(false))
           .withField("y", DefaultGraphQLSchema.INT.withNullability(false))
@@ -64,7 +64,7 @@ class SchemaBasicTest extends FunSpec {
                     |}
                     |""".stripMargin
       val schema = SchemaParser().parse(code)
-      assert(schema.findType("CustomPrimitives") ==
+      assert(schema.findType("CustomPrimitives") ~=
         GraphQLCompositeType(Some("CustomPrimitives"))
           .withField("x", DefaultGraphQLSchema.STRING)
           .withField("y", DefaultGraphQLSchema.INT)
@@ -79,7 +79,7 @@ class SchemaBasicTest extends FunSpec {
                     |""".stripMargin
       val schema = SchemaParser().parse(code)
 
-      assert(schema.findType("CustomArray") ==
+      assert(schema.findType("CustomArray") ~=
         GraphQLCompositeType(Some("CustomArray"))
           .withField("x", DefaultGraphQLSchema.STRING)
           .withField("y", GraphQLArrayType(DefaultGraphQLSchema.INT))
@@ -93,7 +93,7 @@ class SchemaBasicTest extends FunSpec {
                     |}
                     |""".stripMargin
       val schema = SchemaParser().parse(code)
-      assert(schema.findType("CustomNestedArrays") ==
+      assert(schema.findType("CustomNestedArrays") ~=
         GraphQLCompositeType(Some("CustomNestedArrays"))
           .withField("x", DefaultGraphQLSchema.STRING)
           .withField("y", GraphQLArrayType(
@@ -120,7 +120,7 @@ class SchemaBasicTest extends FunSpec {
                     |}
                     |""".stripMargin
       val schema = SchemaParser().parse(code)
-      assert(schema.findType("CustomNested") ==
+      assert(schema.findType("CustomNested") ~=
         GraphQLCompositeType(Some("CustomNested"))
           .withField("x", DefaultGraphQLSchema.ID)
           .withField("y", GraphQLCompositeType()
@@ -145,9 +145,9 @@ class SchemaBasicTest extends FunSpec {
                     |""".stripMargin
       val schema = SchemaParser().parse(code)
 
-      assert(schema.findType("TypeY") == GraphQLCompositeType(Some("TypeY")).withField("z", DefaultGraphQLSchema.INT.withNullability(false)))
+      assert(schema.findType("TypeY") ~= GraphQLCompositeType(Some("TypeY")).withField("z", DefaultGraphQLSchema.INT.withNullability(false)))
 
-      assert(schema.findType("Custom") ==
+      assert(schema.findType("Custom") ~=
         GraphQLCompositeType(Some("Custom"))
           .withField("x", DefaultGraphQLSchema.ID)
           .withField("y", GraphQLCompositeType()
@@ -188,11 +188,11 @@ class SchemaBasicTest extends FunSpec {
           .withField("tt", GraphQLArrayType(DefaultGraphQLSchema.BOOLEAN))
           .withField("x", TypeX.withNullability(false))
 
-      assert(schema.findType("TypeX") == TypeX)
+      assert(schema.findType("TypeX") ~= TypeX)
 
-      assert(schema.findType("TypeY") == TypeY)
+      assert(schema.findType("TypeY") ~= TypeY)
 
-      assert(schema.findType("Custom") ==
+      assert(schema.findType("Custom") ~=
         GraphQLCompositeType(Some("Custom"))
           .withField("x", DefaultGraphQLSchema.ID)
           .withField("y", GraphQLCompositeType()

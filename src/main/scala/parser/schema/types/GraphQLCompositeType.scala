@@ -7,11 +7,12 @@ final case class GraphQLCompositeType(override val name: Option[String] = None, 
   override def withNullability(shouldBeNullable: Boolean): GraphQLCompositeType = copy(isNullableValue = shouldBeNullable)
   override def withField(fieldName: String, graphQLType: GraphQLType[_]): GraphQLCompositeType = copy(fields = fields + (fieldName -> graphQLType))
   override def withName(newName: String): GraphQLCompositeType = copy(name = Some(newName))
-  override def withInterface(newTypeInterface: Option[GraphQLComposableType[_]]): GraphQLCompositeType = newTypeInterface match {
+  /*override def withInterface(newTypeInterface: Option[GraphQLComposableType[_]]): GraphQLCompositeType = newTypeInterface match {
     case Some(newTypeInterfaceValue) => if(newTypeInterfaceValue.isAbstract) copy(typeInterface = newTypeInterface) else
       throw ImplementsNonAbstractTypeError(getStringName, newTypeInterfaceValue.getStringName)
     case None => copy(typeInterface = newTypeInterface)
-  }
+  }*/
+  override def withInterface(newTypeInterface: Option[GraphQLComposableType[_]]): GraphQLCompositeType =  copy(typeInterface = newTypeInterface)
   override def getInterface: Option[GraphQLComposableType[_]] = typeInterface
   override def getFields: Map[String, GraphQLType[_]] = fields
   override def validateType: Boolean = typeInterface match {

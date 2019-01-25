@@ -19,5 +19,4 @@ final case class GraphQLEnumType(override val name: Option[String] = None, value
                         |}""".stripMargin
     }
   }
-  override def satisfiesType(graphQLType: GraphQLType[_]): Boolean = satisfiesTypeModifiers(graphQLType) && graphQLType.equals(this)
 }

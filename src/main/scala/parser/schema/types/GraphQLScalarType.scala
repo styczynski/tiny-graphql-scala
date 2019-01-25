@@ -11,5 +11,4 @@ final case class GraphQLScalarType(override val name: Option[String] = None, ove
       case None => ""
     }
   }
-  override def satisfiesType(graphQLType: GraphQLType[_]): Boolean = satisfiesTypeModifiers(graphQLType) && graphQLType.equals(this)
 }
