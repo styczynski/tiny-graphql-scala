@@ -4,16 +4,17 @@ import parser.exceptions.NotCompatibleTypesError
 import parser.exceptions.{Fail, Success, Failable}
 
 abstract class GraphQLComposableType[T] extends GraphQLType[T] {
-  def getFields: Map[String, GraphQLType[_]]
+  def getFields: Map[String, GraphQLField[_]]
 
   def hasField(name: String): Boolean = getField(name).isDefined
-
-  def getField(name: String): Option[GraphQLType[_]] = getFields.get(name)
-
-  def withField(fieldName: String, graphQLType: GraphQLType[_]): GraphQLComposableType[T]
+  def getField(name: String): Option[GraphQLField[_]] = getFields.get(name)
+  def withField(fieldName: String, field: GraphQLField[_]): GraphQLComposableType[T]
+  def withField(fieldName: String, typeValue: GraphQLType[_]): GraphQLComposableType[T] = {
+    withField(fieldName, GraphQLField(Nil, typeValue))
+  }
 
   override def getFormattedString(nestedMode: Boolean, isTop: Boolean): String = {
-    val typesString = getFields.foldLeft("")((acc: String, keyValue: (String, GraphQLType[_])) => {
+    val typesString = getFields.foldLeft("")((acc: String, keyValue: (String, GraphQLField[_])) => {
       val typeText = keyValue._2.toString(nestedMode, isTop = false).split("\\r?\\n").foldLeft("")((acc, line) => acc + (if (acc.isEmpty) "" else "   ") + line + "\n")
       s"$acc${if (acc.isEmpty) "" else "    "}${keyValue._1}: $typeText"
     })
@@ -29,9 +30,9 @@ abstract class GraphQLComposableType[T] extends GraphQLType[T] {
     val isInTrace = resolveTrace((getName, graphQLType.getName))
     lazy val isMatching = graphQLType match {
       case composable: GraphQLComposableType[_] =>
-        composable.getFields.foldLeft(Success(): Failable)((acc: Failable, keyValue: (String, GraphQLType[_])) => {
+        composable.getFields.foldLeft(Success(): Failable)((acc: Failable, keyValue: (String, GraphQLField[_])) => {
           getField(keyValue._1) match {
-            case Some(fieldType) => acc && (fieldType.satisfiesType(keyValue._2, resolveTrace + ((getName, graphQLType.getName))) || Fail(NotCompatibleTypesError(this, graphQLType, s"Field ${keyValue._1} has type ${keyValue._2.getStringName} which is incompatible with ${fieldType.getTypeKeyword} ${fieldType.getStringName}")))
+            case Some(fieldType) => acc && (fieldType.getType.satisfiesType(keyValue._2.getType, resolveTrace + ((getName, graphQLType.getName))) || Fail(NotCompatibleTypesError(this, graphQLType, s"Field ${keyValue._1} has type ${keyValue._2.getType.getStringName} which is incompatible with ${fieldType.getType.getTypeKeyword} ${fieldType.getType.getStringName}")))
             case None => Fail(NotCompatibleTypesError(this, graphQLType, s"Missing field ${keyValue._1}"))
           }
         })
