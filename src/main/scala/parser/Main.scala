@@ -17,12 +17,14 @@ object Main extends App {
          |
          |interface InterfaceB {
          |  x: InterfaceA
-         |  y: InterfaceB!
+         |  y: InterfaceB
          |}
+         |
+         |union UnionA = TypeA | TypeB
          |
          |type TypeB implements InterfaceB {
          |  x: TypeA
-         |  y: TypeB
+         |  y: UnionA
          |}
          |
          |""".stripMargin
@@ -31,7 +33,7 @@ object Main extends App {
   try {
     println(parser.parse(code))
   } catch {
-    case x: ParserError[_] => throw x.getError
+    case x: ParserError[_] => throw (x.getError)
     case x => throw x
   } finally {
     println("Parsing finished.")

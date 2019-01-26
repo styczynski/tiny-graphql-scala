@@ -1,6 +1,7 @@
 package parser.schema.types
 
 import parser.exceptions.ImplementsNonAbstractTypeError
+import parser.exceptions.{Fail, Success, Failable}
 
 final case class GraphQLCompositeType(override val name: Option[String] = None, override val isNullableValue: Boolean = true, fields: Map[String, GraphQLType[_]] = Map(), typeInterface: Option[GraphQLComposableType[_]] = None) extends GraphQLComposableType[GraphQLCompositeType] {
   override def makeCopy: GraphQLCompositeType = copy()
@@ -15,8 +16,8 @@ final case class GraphQLCompositeType(override val name: Option[String] = None, 
   override def withInterface(newTypeInterface: Option[GraphQLComposableType[_]]): GraphQLCompositeType =  copy(typeInterface = newTypeInterface)
   override def getInterface: Option[GraphQLComposableType[_]] = typeInterface
   override def getFields: Map[String, GraphQLType[_]] = fields
-  override def validateType: Boolean = typeInterface match {
+  override def validateType: Failable = typeInterface match {
     case Some(typeInterfaceValue) => satisfiesType(typeInterfaceValue)
-    case None => true
+    case None => Success()
   }
 }

@@ -1,6 +1,7 @@
 package parser.schema.types
 
 import parser.exceptions.{ImplementsNonAbstractTypeError, NotCompatibleTypesError}
+import parser.exceptions.{Fail, Success, Failable}
 
 abstract class GraphQLType[T](val name: Option[String] = None, val isNullableValue: Boolean = true) {
   def withName(newName: String): GraphQLType[T]
@@ -29,25 +30,35 @@ abstract class GraphQLType[T](val name: Option[String] = None, val isNullableVal
       case None => getFormattedString(nestedMode, isTop)
     } else getFormattedString(nestedMode, isTop)
   }
-  def validateType: Boolean = true
-  def satisfiesType(graphQLType: GraphQLType[_], resolveTrace: Set[(Option[String], Option[String])] = Set()): Boolean = graphQLType match {
-    case refType: GraphQLRefType => satisfiesType(refType.resolve, resolveTrace)
-    case refInterface: GraphQLRefInterface => satisfiesType(refInterface.resolve, resolveTrace)
-    case _ => satisfiesTypeModifiers(graphQLType) && (resolveTrace((getName, graphQLType.getName)) || graphQLType.equals(this))
+  def validateType: Failable = Success()
+  def satisfiesType(graphQLType: GraphQLType[_], resolveTrace: Set[(Option[String], Option[String])] = Set()): Failable = {
+    val isInTrace = resolveTrace((getName, graphQLType.getName))
+    lazy val isMatching = if (graphQLType.equals(this)) Success() else Fail(NotCompatibleTypesError(this, graphQLType, "Types do not equal"))
+    graphQLType match {
+      case refType: GraphQLRefType => satisfiesType(refType.resolve, resolveTrace)
+      case refInterface: GraphQLRefInterface => satisfiesType(refInterface.resolve, resolveTrace)
+      case union: GraphQLUnionType => union.anySubtypeIsSatisfiedBy(this, resolveTrace + ((getName, graphQLType.getName)))
+      case _ => satisfiesTypeModifiers(graphQLType) && (if (isInTrace) Success() else isMatching)
+    }
   }
-  def satisfiesTypeModifiers(graphQLType: GraphQLType[_]): Boolean = if(isNullable == graphQLType.isNullable) true
-    else throw NotCompatibleTypesError(this, graphQLType, "Nullability does not match")
+  def equivalentType(graphQLType: GraphQLType[_]): Failable = {
+    satisfiesType(graphQLType) && graphQLType.satisfiesType(this)
+  }
+  def satisfiesTypeModifiers(graphQLType: GraphQLType[_]): Failable = if(isNullable == graphQLType.isNullable) Success()
+    else Fail(NotCompatibleTypesError(this, graphQLType, "Nullability does not match"))
   override def toString: String = s"$getTypeKeyword ${toString(nestedMode = false)}"
+
+  def ~!= (o: Any): Boolean = (!(this ~< o)) || (!(this ~> o))
 
   def ~= (o: Any): Boolean = this ~< o && this ~> o
 
   def ~< (o: Any): Boolean = o match {
-    case typeValue: GraphQLType[_] => satisfiesType(typeValue)
+    case typeValue: GraphQLType[_] => satisfiesType(typeValue).hasNotFailed
     case _ => false
   }
 
   def ~> (o: Any): Boolean = o match {
-    case typeValue: GraphQLType[_] => typeValue.satisfiesType(this)
+    case typeValue: GraphQLType[_] => typeValue.satisfiesType(this).hasNotFailed
     case _ => false
   }
 }

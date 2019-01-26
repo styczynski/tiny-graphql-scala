@@ -44,7 +44,7 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
   }
 
   def Expression: RuleEnvT = rule {
-    TypeDeclaration | EnumDeclaration | ScalarDeclaration | InterfaceDeclaration | DebugStatement
+    TypeDeclaration | EnumDeclaration | ScalarDeclaration | InterfaceDeclaration | UnionDeclaration | DebugStatement
   }
 
   def DebugStatement: RuleEnvT = rule {
@@ -88,6 +88,18 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
       ((env: GraphQLSchema, typeName: AnyIdentifier) => parserErr(env.registerType(GraphQLScalarType(Some(typeName.getName)))))
   }
 
+  def UnionDeclaration: RuleEnvT = rule {
+    KeywordUnion ~
+      Whitespaces ~
+      Identifier ~>
+      ((env: GraphQLSchema, ident: AnyIdentifier) => ident :: env :: HNil) ~
+      Whitespaces ~
+      '=' ~
+      Whitespaces ~
+      UnionDefinition ~>
+      ((typeName: AnyIdentifier, env: EnvE[GraphQLType[_]]) => parserErr(env._1.registerType(env._2.withName(typeName.getName))))
+  }
+
   def EnumDeclaration: RuleEnvT = rule {
     KeywordEnum ~
       Whitespaces ~
@@ -107,6 +119,17 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
       ) ~
       Whitespaces ~
       '}'
+  }
+
+  def UnionDefinition: RuleEnvE[GraphQLType[_]] = rule {
+      Whitespaces ~>
+      ((env: GraphQLSchema) => (env, GraphQLUnionType())) ~
+      optional(
+        Whitespaces ~ Identifier ~ Whitespaces ~> ((env: EnvE[GraphQLUnionType], valueName: AnyIdentifier) => (env._1, env._2.withType(GraphQLRefType(env._1, Some(valueName.getName)))))
+      ) ~ zeroOrMore(
+        '|' ~ Whitespaces ~ Identifier ~ Whitespaces ~> ((env: EnvE[GraphQLUnionType], valueName: AnyIdentifier) => (env._1, env._2.withType(GraphQLRefType(env._1, Some(valueName.getName)))))
+      ) ~
+      Whitespaces
   }
 
   def TypeDeclaration: RuleEnvT = rule {
@@ -210,6 +233,8 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
   def KeywordInterface: Rule0 = rule { atomic("interface") }
 
   def KeywordEnum: Rule0 = rule { atomic("enum") }
+
+  def KeywordUnion: Rule0 = rule { atomic("union") }
 
   def KeywordScalar: Rule0 = rule { atomic("scalar") }
 
