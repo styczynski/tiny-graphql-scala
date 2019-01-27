@@ -6,17 +6,20 @@ object Main extends App {
   println("Parsing started.")
   val code =
       """|
-         |type TypeB {
-         |  x(a, b, c): String
+         |input Inp {
+         |  w: Int!
          |}
          |
+         |type Type {
+         |  x(z: [[ID!]]!, q: [[String]!], p: [Inp!]): String
+         |}
          |""".stripMargin
   println(code)
   val parser = SchemaParser()
   try {
-    println(parser.parse(code))
+    val schema = parser.parse(code)
   } catch {
-    case x: ParserError[_] => println(x)
+    case x: ParserError[_] => println(x.getMessage())
     case x => throw x
   } finally {
     println("Parsing finished.")

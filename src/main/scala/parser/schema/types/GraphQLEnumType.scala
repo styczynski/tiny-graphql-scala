@@ -1,5 +1,7 @@
 package parser.schema.types
 
+import parser.schema.GraphResolveTrace
+
 final case class GraphQLEnumType(override val name: Option[String] = None, values: Set[String] = Set(), override val isNullableValue: Boolean = true) extends GraphQLType[GraphQLEnumType] {
   override def makeCopy: GraphQLEnumType = copy()
   override def withNullability(shouldBeNullable: Boolean): GraphQLEnumType = copy(isNullableValue = shouldBeNullable)
@@ -19,4 +21,5 @@ final case class GraphQLEnumType(override val name: Option[String] = None, value
                         |}""".stripMargin
     }
   }
+  override def onDirectionExtraction(resolveTrace: GraphResolveTrace): GraphQLTypeDirection = GraphQLDirectionUni()
 }

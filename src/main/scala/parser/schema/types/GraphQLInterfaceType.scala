@@ -1,5 +1,8 @@
 package parser.schema.types
 
+import parser.exceptions.MixedTypesDirectionError
+import parser.schema.GraphResolveTrace
+
 final case class GraphQLInterfaceType(override val name: Option[String] = None, override val isNullableValue: Boolean = true, fields: Map[String,  GraphQLField] = Map()) extends GraphQLInterface {
   override def makeCopy: GraphQLInterfaceType = copy()
   override def withNullability(shouldBeNullable: Boolean): GraphQLInterfaceType = copy(isNullableValue = shouldBeNullable)
@@ -8,4 +11,5 @@ final case class GraphQLInterfaceType(override val name: Option[String] = None, 
   override def getFields: Map[String, GraphQLField] = fields
   override def getTypeKeyword = "interface"
   override def isAbstract = true
+  override def onDirectionExtraction(resolveTrace: GraphResolveTrace): GraphQLTypeDirection = GraphQLDirectionOutput()
 }

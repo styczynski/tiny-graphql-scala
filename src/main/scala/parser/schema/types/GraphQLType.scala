@@ -1,7 +1,8 @@
 package parser.schema.types
 
 import parser.exceptions.{ImplementsNonAbstractTypeError, NotCompatibleTypesError}
-import parser.exceptions.{Fail, Success, Failable}
+import parser.exceptions.{Fail, Failable, Success}
+import parser.schema.GraphResolveTrace
 
 abstract class GraphQLType[T](val name: Option[String] = None, val isNullableValue: Boolean = true) {
   def withName(newName: String): GraphQLType[T]
@@ -30,22 +31,38 @@ abstract class GraphQLType[T](val name: Option[String] = None, val isNullableVal
       case None => getFormattedString(nestedMode, isTop)
     } else getFormattedString(nestedMode, isTop)
   }
-  def validateType: Failable = Success()
-  def satisfiesType(graphQLType: GraphQLType[_], resolveTrace: Set[(Option[String], Option[String])] = Set()): Failable = {
-    val isInTrace = resolveTrace((getName, graphQLType.getName))
-    lazy val isMatching = if (graphQLType.equals(this)) Success() else Fail(NotCompatibleTypesError(this, graphQLType, "Types do not equal"))
+
+  protected def onTypeValidation(resolveTrace: GraphResolveTrace): Failable = Success()
+  protected def onSatisfactionCheck(graphQLType: GraphQLType[_], resolveTrace: GraphResolveTrace): Failable = {
+    lazy val isMatching = if(graphQLType.withNullability(isNullable).equals(this)) Success() else Fail(NotCompatibleTypesError(this, graphQLType, "Types do not equal"))
     graphQLType match {
-      case refType: GraphQLRefType => satisfiesType(refType.resolve, resolveTrace)
-      case refInterface: GraphQLRefInterface => satisfiesType(refInterface.resolve, resolveTrace)
-      case union: GraphQLUnionType => union.anySubtypeIsSatisfiedBy(this, resolveTrace + ((getName, graphQLType.getName)))
-      case _ => satisfiesTypeModifiers(graphQLType) && (if (isInTrace) Success() else isMatching)
+      case refType: GraphQLRefType => onSatisfactionCheck(refType.resolve, resolveTrace)
+      case refInterface: GraphQLRefInterface => onSatisfactionCheck(refInterface.resolve, resolveTrace)
+      case union: GraphQLUnionType => union.anySubtypeIsSatisfiedBy(this, resolveTrace)
+      case _ => satisfiesTypeModifiers(graphQLType) && isMatching
     }
   }
+  protected def onDirectionExtraction(resolveTrace: GraphResolveTrace): GraphQLTypeDirection
+
+  def valdiateType(resolveTrace: GraphResolveTrace = new GraphResolveTrace()): Failable = {
+    if(resolveTrace.guardValidation(this)) Success() else onTypeValidation(resolveTrace.markValidation(this))
+  }
+  def satisfiesType(graphQLType: GraphQLType[_], resolveTrace: GraphResolveTrace = new GraphResolveTrace()): Failable = {
+    satisfiesTypeModifiers(graphQLType) && (if(resolveTrace.guardSatisfaction(this, graphQLType)) Success() else onSatisfactionCheck(graphQLType, resolveTrace.markSatisfaction(this, graphQLType)))
+  }
+  def getDirection(resolveTrace: GraphResolveTrace = new GraphResolveTrace()): GraphQLTypeDirection = {
+    val dir = if(resolveTrace.guardDirection(this)) resolveTrace.getCachedDirection(this) else onDirectionExtraction(resolveTrace.markDirection(this))
+    resolveTrace.overrideDirectionCache(this, dir)
+    dir
+  }
+
+
   def equivalentType(graphQLType: GraphQLType[_]): Failable = {
     satisfiesType(graphQLType) && graphQLType.satisfiesType(this)
   }
-  def satisfiesTypeModifiers(graphQLType: GraphQLType[_]): Failable = if(isNullable == graphQLType.isNullable) Success()
+  def satisfiesTypeModifiers(graphQLType: GraphQLType[_]): Failable = if((!isNullable && graphQLType.isNullable) || (isNullable == graphQLType.isNullable)) Success()
     else Fail(NotCompatibleTypesError(this, graphQLType, "Nullability does not match"))
+
   override def toString: String = s"$getTypeKeyword ${toString(nestedMode = false)}"
 
   def ~!= (o: Any): Boolean = (!(this ~< o)) || (!(this ~> o))

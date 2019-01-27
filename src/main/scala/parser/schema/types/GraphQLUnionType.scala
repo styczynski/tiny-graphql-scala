@@ -1,7 +1,7 @@
 package parser.schema.types
 
-import parser.exceptions.NotCompatibleTypesError
-import parser.exceptions.{Fail, Success, Failable}
+import parser.exceptions._
+import parser.schema.GraphResolveTrace
 
 final case class GraphQLUnionType(override val name: Option[String] = None, types: Set[GraphQLType[_]] = Set(), override val isNullableValue: Boolean = true) extends GraphQLType[GraphQLUnionType] {
   override def makeCopy: GraphQLUnionType = copy()
@@ -18,7 +18,7 @@ final case class GraphQLUnionType(override val name: Option[String] = None, type
       case None => s"= $valuesString"
     }
   }
-  def everySubtypeSatisfies(graphQLType: GraphQLType[_], resolveTrace: Set[(Option[String], Option[String])]): Failable = {
+  def everySubtypeSatisfies(graphQLType: GraphQLType[_], resolveTrace: GraphResolveTrace): Failable = {
     types.foldLeft(Success(): Failable)((acc: Failable, typeValue: GraphQLType[_]) => {
       lazy val isMatching = typeValue.satisfiesType(graphQLType, resolveTrace)
       acc && isMatching
@@ -27,29 +27,37 @@ final case class GraphQLUnionType(override val name: Option[String] = None, type
       case Success() => Success()
     }
   }
-  def anySubtypeSatisfies(graphQLType: GraphQLType[_], resolveTrace: Set[(Option[String], Option[String])]): Failable = {
-    types.foldLeft(Fail(NotCompatibleTypesError(this, graphQLType, s"Type ${graphQLType.getStringName} has no compatible types in union ${graphQLType.getStringName}")): Failable)((acc: Failable, unionTypeValue: GraphQLType[_]) => {
-      lazy val isMatching = graphQLType.satisfiesType(unionTypeValue, resolveTrace)
-      acc || isMatching
-    })
-  }
-  def anySubtypeIsSatisfiedBy(graphQLType: GraphQLType[_], resolveTrace: Set[(Option[String], Option[String])]): Failable = {
-    types.foldLeft(Fail(NotCompatibleTypesError(this, graphQLType, s"Type ${graphQLType.getStringName} has no compatible types in union ${graphQLType.getStringName}")): Failable)((acc: Failable, unionTypeValue: GraphQLType[_]) => {
+  def anySubtypeSatisfies(graphQLType: GraphQLType[_], resolveTrace: GraphResolveTrace): Failable = {
+    val f = Fail(NotCompatibleTypesError(this, graphQLType, s"${graphQLType.getTypeKeyword} ${graphQLType.getStringName} has no compatible types in union ${graphQLType.getStringName}")): Failable
+    types.foldLeft(f)((acc: Failable, unionTypeValue: GraphQLType[_]) => {
       lazy val isMatching = unionTypeValue.satisfiesType(graphQLType, resolveTrace)
       acc || isMatching
+    }) || f
+  }
+  def anySubtypeIsSatisfiedBy(graphQLType: GraphQLType[_], resolveTrace: GraphResolveTrace): Failable = {
+    val f = Fail(NotCompatibleTypesError(this, graphQLType, s"${graphQLType.getTypeKeyword} ${graphQLType.getStringName} has no compatible types in union ${graphQLType.getStringName}")): Failable
+    types.foldLeft(f)((acc: Failable, unionTypeValue: GraphQLType[_]) => {
+      lazy val isMatching = graphQLType.satisfiesType(unionTypeValue, resolveTrace)
+      acc || isMatching
+    }) || f
+  }
+
+  override def onSatisfactionCheck(graphQLType: GraphQLType[_], resolveTrace: GraphResolveTrace): Failable = graphQLType match {
+    case union: GraphQLUnionType => types.foldLeft(Success(): Failable)((acc: Failable, typeValue: GraphQLType[_]) => {
+      acc && union.anySubtypeIsSatisfiedBy(typeValue, resolveTrace)
     })
+    case refType: GraphQLRefType => onSatisfactionCheck(refType.resolve, resolveTrace)
+    case refInterface: GraphQLRefInterface => onSatisfactionCheck(refInterface.resolve, resolveTrace)
+    case _ =>
+      everySubtypeSatisfies(graphQLType, resolveTrace)
   }
-  override def satisfiesType(graphQLType: GraphQLType[_], resolveTrace: Set[(Option[String], Option[String])]): Failable = {
-    val isInTrace = resolveTrace((getName, graphQLType.getName))
-    lazy val isMatching = graphQLType match {
-      case union: GraphQLUnionType => types.foldLeft(Success(): Failable)((acc: Failable, typeValue: GraphQLType[_]) => {
-        acc && union.anySubtypeIsSatisfiedBy(typeValue, resolveTrace + ((getName, graphQLType.getName)))
-      })
-      case refType: GraphQLRefType => satisfiesType(refType.resolve, resolveTrace)
-      case refInterface: GraphQLRefInterface => satisfiesType(refInterface.resolve, resolveTrace)
-      case _ =>
-        everySubtypeSatisfies(graphQLType, resolveTrace + ((getName, graphQLType.getName)))
-    }
-    satisfiesTypeModifiers(graphQLType) && (if (isInTrace) Success() else isMatching)
-  }
+
+  override def onDirectionExtraction(resolveTrace: GraphResolveTrace): GraphQLTypeDirection = GraphQLDirectionOutput()
+  override def onTypeValidation(resolveTrace: GraphResolveTrace): Failable = types.foldLeft(Success(): Failable)((acc: Failable, unionTypeValue: GraphQLType[_]) => {
+    acc && unionTypeValue.valdiateType(resolveTrace) && (
+      if(unionTypeValue.getDirection(resolveTrace) !~ getDirection(resolveTrace))
+        Fail(MixedTypesDirectionError(this, unionTypeValue, s"when adding new type to union"))
+      else Success()
+    )
+  })
 }

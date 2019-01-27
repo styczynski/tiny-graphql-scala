@@ -1,5 +1,6 @@
 package parser.schema.types
 
+import parser.schema.GraphResolveTrace
 import parser.schema.GraphQLSchema
 import parser.exceptions.Failable
 
@@ -13,7 +14,10 @@ final case class GraphQLRefType(val schema: GraphQLSchema, override val name: Op
   override def getTypeKeyword: String = resolve.getTypeKeyword
   override def isAbstract: Boolean = resolve.isAbstract
   override def getFormattedString(nestedMode: Boolean, isTop: Boolean): String = resolve.getFormattedString(nestedMode, isTop)
-  override def validateType: Failable = resolve.validateType
-  override def satisfiesType(graphQLType: GraphQLType[_], resolveTrace: Set[(Option[String], Option[String])]): Failable = resolve.satisfiesType(graphQLType, resolveTrace)
   def resolve: GraphQLType[_] = schema.findType(name.get).withNullability(isNullableValue)
+
+  override def getDirection(resolveTrace: GraphResolveTrace): GraphQLTypeDirection = resolve.getDirection(resolveTrace)
+  override def satisfiesType(graphQLType: GraphQLType[_], resolveTrace: GraphResolveTrace): Failable = resolve.satisfiesType(graphQLType, resolveTrace)
+  override def valdiateType(resolveTrace: GraphResolveTrace = new GraphResolveTrace()): Failable = resolve.valdiateType(resolveTrace)
+  override def onDirectionExtraction(resolveTrace: GraphResolveTrace): GraphQLTypeDirection = getDirection(resolveTrace)
 }

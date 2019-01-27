@@ -2,9 +2,8 @@ package parser.core
 
 import scala.io.Source
 import scala.collection.immutable.Seq
-import parser.exceptions.ParserError
-import org.parboiled2.{ParseError, RuleTrace, Position}
-import org.parboiled2.ParseError
+import parser.exceptions.{ParserError, SyntaxError}
+import org.parboiled2.{ErrorFormatter, ParseError, Position, RuleTrace}
 
 abstract class Parser[ParserCoreT <: org.parboiled2.Parser, ResultT] {
   var core: Option[ParserCoreT] = None
@@ -23,7 +22,15 @@ abstract class Parser[ParserCoreT <: org.parboiled2.Parser, ResultT] {
       run(core.get)
     } catch {
       case error: ParserError[_] => throw error.withParser(core)
-      case error: ParseError => throw ParserError(error, error.position, Some(error.traces)).withParser(core)
+      case error: ParseError => throw ParserError(SyntaxError(core.get.formatError(error, new ErrorFormatter(
+        showExpected = true,
+        showPosition = false,
+        showLine = false,
+        showTraces = false,
+        showFrameStartOffset = false,
+        expandTabs = 0,
+        traceCutOff = 0
+      ))), error.position, Some(error.traces)).withParser(core)
       case error: Throwable => throw ParserError(error).withParser(core)
     }
   }

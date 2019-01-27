@@ -21,7 +21,7 @@ final class GraphQLSchema(var types: Map[String, GraphQLType[_]] = Map(), var in
     }
   }
 
-  def validate: Boolean = types.forall(_._2.validateType.hasNotFailedOrThrow) && interfaces.forall(_._2.validateType.hasNotFailedOrThrow)
+  def validate: Boolean = types.forall(_._2.valdiateType().hasNotFailedOrThrow) && interfaces.forall(_._2.valdiateType().hasNotFailedOrThrow)
 
   def registerType(graphQLType: GraphQLType[_]): GraphQLSchema = {
     graphQLType.getName match {

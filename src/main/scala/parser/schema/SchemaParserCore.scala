@@ -44,7 +44,7 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
   }
 
   def Expression: RuleEnvT = rule {
-    TypeDeclaration | EnumDeclaration | ScalarDeclaration | InterfaceDeclaration | UnionDeclaration | DebugStatement
+    TypeDeclaration | InputDeclaration | EnumDeclaration | ScalarDeclaration | InterfaceDeclaration | UnionDeclaration | DebugStatement
   }
 
   def DebugStatement: RuleEnvT = rule {
@@ -124,12 +124,25 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
   def UnionDefinition: RuleEnvE[GraphQLType[_]] = rule {
       Whitespaces ~>
       ((env: GraphQLSchema) => (env, GraphQLUnionType())) ~
-      optional(
+      (
         Whitespaces ~ Identifier ~ Whitespaces ~> ((env: EnvE[GraphQLUnionType], valueName: AnyIdentifier) => (env._1, env._2.withType(GraphQLRefType(env._1, Some(valueName.getName)))))
       ) ~ zeroOrMore(
         '|' ~ Whitespaces ~ Identifier ~ Whitespaces ~> ((env: EnvE[GraphQLUnionType], valueName: AnyIdentifier) => (env._1, env._2.withType(GraphQLRefType(env._1, Some(valueName.getName)))))
       ) ~
       Whitespaces
+  }
+
+  def InputDeclaration: RuleEnvT = rule {
+    KeywordInput ~
+      Whitespaces ~
+      Identifier ~>
+      ((env: GraphQLSchema, ident: AnyIdentifier) => ident :: env :: HNil) ~
+      Whitespaces ~
+      InputDefinition ~>
+      ((typeName: AnyIdentifier, env: EnvE[GraphQLType[_]]) => {
+        val typeWithName = env._2.withName(typeName.getName)
+        parserErr(env._1.registerType(typeWithName))
+      })
   }
 
   def TypeDeclaration: RuleEnvT = rule {
@@ -159,6 +172,15 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
       '}'
   }
 
+  def InputDefinition: RuleEnvE[GraphQLComposableType[GraphQLCompositeInputType]] = rule {
+    '{' ~
+      Whitespaces ~>
+      ((env: GraphQLSchema) => (env, GraphQLCompositeInputType())) ~
+      zeroOrMore(InputTypeAssignment[GraphQLCompositeInputType]) ~
+      Whitespaces ~
+      '}'
+  }
+
   def TypeDefinition: RuleEnvE[GraphQLComposableType[GraphQLCompositeType]] = rule {
     '{' ~
       Whitespaces ~>
@@ -172,29 +194,40 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
     Whitespaces ~> ((env: EnvE[GraphQLComposableType[T]]) => env)
   }
 
-  def TypeAssignmentArgs: RuleT[GraphQLField] = rule {
+  def TypeAssignmentArgs[T]: Rule[ EnvE[GraphQLComposableType[T]] :: GraphQLField :: HNil, EnvE[GraphQLComposableType[T]] :: GraphQLField :: HNil ] = rule {
     '(' ~
-      Whitespaces ~
-      Identifier ~
-      Whitespaces ~>
-      ((field: GraphQLField, ident: AnyIdentifier) => field.withArg(ident.getName)) ~
       zeroOrMore(
-        ',' ~  Whitespaces ~ Identifier ~  Whitespaces ~>
-        ((field: GraphQLField, ident: AnyIdentifier) => field.withArg(ident.getName))
-      ) ~
-      ')'
+        Whitespaces ~
+        Identifier ~
+        Whitespaces ~
+        ':' ~
+        Whitespaces ~>
+        ((env: EnvE[GraphQLComposableType[T]], field: GraphQLField, ident: AnyIdentifier) => env :: ident :: field :: env._1 :: HNil) ~
+        (TypeNullableIdentifier | TypeArray) ~>
+        ((env: EnvE[GraphQLComposableType[T]], ident: AnyIdentifier, field: GraphQLField, envComp: GraphQLSchema, typeValue: GraphQLType[_]) => env :: field.withArg(ident.getName, typeValue) :: HNil)
+      ).separatedBy(",") ~
+    ')'
   }
 
-  def TypeAssignmentKeyIdentifier: Rule1[GraphQLField] = rule {
+  /*zeroOrMore(
+        ',' ~  Whitespaces ~ Identifier ~  Whitespaces ~ ':' ~ Whitespaces ~ Identifier ~ optional(Nullability) ~ Whitespaces ~>
+        ((env: EnvE[GraphQLComposableType[T]], field: GraphQLField, ident: AnyIdentifier, typeIndent: AnyIdentifier) => env :: field.withArg(ident.getName, GraphQLRefType(env._1, Some(typeIndent.getName)).withNullability(typeIndent.isNullable)) :: HNil)
+      ) ~*/
+
+  def TypeAssignmentKey[T]: Rule[ EnvE[GraphQLComposableType[T]] :: HNil, EnvE[GraphQLComposableType[T]] :: GraphQLField :: HNil ] = rule {
     Identifier ~>
-      ((fieldName: AnyIdentifier) => GraphQLField(fieldName.getName, Nil, null)) ~
-      Whitespaces ~
-      optional(TypeAssignmentArgs)
+      ((env: EnvE[GraphQLComposableType[T]], fieldName: AnyIdentifier) => env :: GraphQLField(fieldName.getName, Map(), null) :: HNil) ~
+      Whitespaces
+  }
+
+  def TypeAssignmentKeyWithArgs[T]: Rule[ EnvE[GraphQLComposableType[T]] :: HNil, EnvE[GraphQLComposableType[T]] :: GraphQLField :: HNil ] = rule {
+    TypeAssignmentKey[T] ~
+      optional(TypeAssignmentArgs[T])
   }
 
   def TypeAssignment[T]: Rule[EnvE[GraphQLComposableType[T]] :: HNil, EnvE[GraphQLComposableType[T]] :: HNil] = rule {
     Whitespaces ~
-      TypeAssignmentKeyIdentifier ~
+      TypeAssignmentKeyWithArgs[T] ~
       Whitespaces ~
       ':' ~
       Whitespaces ~>
@@ -202,6 +235,19 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
       (
         TypeAssignmentInline[T] | TypeAssignmentIdentifier[T] | TypeAssignmentArray[T]
       ) ~
+      Whitespaces
+  }
+
+  def InputTypeAssignment[T]: Rule[EnvE[GraphQLComposableType[T]] :: HNil, EnvE[GraphQLComposableType[T]] :: HNil] = rule {
+    Whitespaces ~
+      TypeAssignmentKey[T] ~
+      Whitespaces ~
+      ':' ~
+      Whitespaces ~>
+      ((env: EnvE[GraphQLComposableType[T]], field: GraphQLField) => field :: env._2 :: env._1 :: HNil) ~
+      (
+        TypeAssignmentInline[T] | TypeAssignmentIdentifier[T] | TypeAssignmentArray[T]
+        ) ~
       Whitespaces
   }
 
@@ -228,6 +274,12 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
       ((env: GraphQLSchema, typeName: AnyIdentifier, selfName: AnyIdentifier) => env :: parserErr(GraphQLArrayType(GraphQLRefType(env, Some(typeName.getName)).withNullability(typeName.isNullable)).withNullability(selfName.isNullable)) :: HNil)
   }
 
+  def TypeNullableIdentifier: RuleEnvP[GraphQLType[_]] = rule {
+    Identifier ~
+      optional(Nullability) ~>
+      ((env: GraphQLSchema, typeName: AnyIdentifier) => env :: GraphQLRefType(env, Some(typeName.getName)).withNullability(typeName.isNullable) :: HNil)
+  }
+
   def TypeArray: RuleEnvP[GraphQLType[_]] = rule {
     IdentifierArray | (
       '[' ~
@@ -249,6 +301,8 @@ class SchemaParserCore(val input: ParserInput, val env: Option[GraphQLSchema] = 
   def Letters: Rule0 = rule { oneOrMore(CharPredicate.AlphaNum) }
 
   def KeywordType: Rule0 = rule { atomic("type") }
+
+  def KeywordInput: Rule0 = rule { atomic("input") }
 
   def KeywordInterface: Rule0 = rule { atomic("interface") }
 
