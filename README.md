@@ -1,7 +1,8 @@
 # tiny-graphql-scala ![Build status](https://travis-ci.org/styczynski/tiny-graphql-scala.svg?branch=master) [![Coverage status](https://coveralls.io/repos/github/styczynski/tiny-graphql-scala/badge.svg?branch=master)](https://coveralls.io/github/styczynski/tiny-graphql-scala?branch=master) ![License status](https://img.shields.io/github/license/styczynski/tiny-graphql-scala.svg)
 
 Tiny, fast GraphQL parser written in Scala
-** This is yet experimental software, use it for your own resposibility **
+
+**This is yet experimental software, use it for your own resposibility**
 
 Contents of this Document
  * Introduction
@@ -139,7 +140,7 @@ What was achieved:
    * The fragments are the last functionality that is not yet supported
  * Easy way to add custom types in future with own validation, field format etc.
  * Working SBT build with coverage collection on Travis CI
- * >70 tests for parsing various schemas
+ * more than 70 tests for parsing various schemas
  * Very simple GraphQL query parser (not yet finished)
  
 What left:
