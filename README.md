@@ -2,9 +2,10 @@
 
 Tiny, fast GraphQL parser written in Scala
 
-**This is yet experimental software, use it for your own resposibility**
+You can play with [online schema formatter](http://serene-lake-16900.herokuapp.com) and view it's sources [here](https://github.com/styczynski/tiny-graphql-scala-webpage).
 
-Contents of this Document
+## Contents of the document
+
  * Introduction
  * GraphQL schema parser
    * Parsing schema text
@@ -14,6 +15,8 @@ Contents of this Document
  * TODOs
  
 ## Introduction
+
+**This is yet experimental software, use it for your own resposibility**
  
 This project was implemented as a part of Warsaw university course and is yet highly experimental software without any guarantee it works and that it will still work in the future.
  
