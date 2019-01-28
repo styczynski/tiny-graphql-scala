@@ -3,7 +3,20 @@ package parser
 import parser.exceptions.ParserError
 
 object Main extends App {
-  println("Parsing started.")
+  val code =
+    """|
+       |query {
+       |  fieldA {
+       |    fieldX {
+       |      someData
+       |    }
+       |  }
+       |}
+       |""".stripMargin
+
+  println(RequestParser().parse(code))
+
+  /*println("Parsing started.")
   val code =
       """|
          |input Inp {
@@ -23,5 +36,5 @@ object Main extends App {
     case x => throw x
   } finally {
     println("Parsing finished.")
-  }
+  }*/
 }
