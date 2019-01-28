@@ -1,9 +1,9 @@
-name := "hello-world"
-organization := "ch.epfl.scala"
+name := "tiny-graphql-scala"
+organization := "tiny.graphql.scala"
 version := "1.0"
 
 val commonSettings = Seq(
-  scalaVersion := "2.12.7",
+  scalaVersion := "2.11.7",
   scalacOptions ++= Seq("-feature"),
   libraryDependencies += "org.typelevel" %% "cats-core" % "1.4.0",
   libraryDependencies += "org.parboiled" %% "parboiled" % "2.1.5",

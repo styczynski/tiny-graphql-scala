@@ -33,6 +33,18 @@ final class GraphQLSchema(var types: Map[String, GraphQLType[_]] = Map(), var in
     }
   }
 
+  def format: String = {
+    val typesString = types.foldLeft("")((acc: String, keyValue: (String, GraphQLType[_])) => {
+      val typeText = keyValue._2.toString(nestedMode = false).split("\\r?\\n").foldLeft("")((acc, line) => acc + line + "\n")
+      s"${if (acc.isEmpty) "# Types definitions\n" else ""}$acc${keyValue._2.getTypeKeyword} $typeText"
+    })
+    val interfacesString = interfaces.foldLeft("")((acc: String, keyValue: (String, GraphQLInterfaceType)) => {
+      val typeText = keyValue._2.toString(nestedMode = false).split("\\r?\\n").foldLeft("")((acc, line) => acc + line + "\n")
+      s"${if (acc.isEmpty) "# Interfaces definitions\n" else ""}$acc${keyValue._2.getTypeKeyword} $typeText"
+    })
+    s"$interfacesString\n$typesString"
+  }
+
   override def toString: String = {
     val typesString = types.foldLeft("")((acc: String, keyValue: (String, GraphQLType[_])) => {
       val typeText = keyValue._2.toString(nestedMode = false).split("\\r?\\n").foldLeft("")((acc, line) => acc + (if (acc.isEmpty) "" else "    ") + line + "\n")

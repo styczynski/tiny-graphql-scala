@@ -9,10 +9,12 @@ final case class GraphQLField(key: String, args: Map[String, GraphQLType[_]], ty
   def withType(newType: GraphQLType[_]): GraphQLField = copy(typeValue = Some(newType))
   def getType: GraphQLType[_] = typeValue.get
   def getArgsString: String = {
-    val text = args.foldLeft("")((acc, arg) => {
-      if (acc.isEmpty) s"${arg._1}: ${arg._2.getStringName}" else s"${arg._1}: ${arg._2.getStringName}, $acc"
-    })
-    s"($text)"
+    if (args.isEmpty) "" else {
+      val text = args.foldLeft("")((acc, arg) => {
+        if (acc.isEmpty) s"${arg._1}: ${arg._2.getStringName}" else s"${arg._1}: ${arg._2.getStringName}, $acc"
+      })
+      s"($text)"
+    }
   }
   def getArgs: Map[String, GraphQLType[_]] = args
   def toString(nestedMode: Boolean, isTop: Boolean): String =
